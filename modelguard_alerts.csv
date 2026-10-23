@@ -1,0 +1,7 @@
+Alert Type,Feature,Value,Severity,Source,timestamp,feature,severity,message
+Feature Drift,MonthlyCharges,1.8121,High,Simulated current dataset,,,,
+Feature Drift,tenure,1.5449,High,Simulated current dataset,,,,
+KS Distribution Test,tenure,0.225,Review,Simulated current dataset,,,,
+KS Distribution Test,MonthlyCharges,0.2434,Review,Simulated current dataset,,,,
+,,,,,2026-10-23T19:21:52,customerID,High,High simulated distribution drift detected for customerID.
+,,,,,2026-10-23T19:21:52,TotalCharges,High,High simulated distribution drift detected for TotalCharges.
