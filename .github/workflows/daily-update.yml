@@ -15,8 +15,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          ref: main
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -31,16 +29,15 @@ jobs:
       - name: Run daily monitoring update
         run: python app.py --daily-update
 
-      - name: Save updated monitoring files
+      - name: Commit updated data
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add -A -- data/simulated monitoring
-
+          git add -A
           if ! git diff --cached --quiet; then
             git commit -m "Automated ModelGuard daily monitoring update"
             git push origin main
           else
-            echo "No tracked monitoring changes to commit."
+            echo "No changes to commit"
           fi
