@@ -1,3 +1,4 @@
 Run Time,Dataset,Reference Rows,Simulated Current Rows,Random Forest Accuracy,ANN Accuracy,Alerts,Data Source,timestamp,simulated_rows,reference_file,high_drift_features,alerts_created,simulated_file
 2026-10-22 11:21:29.985499,IBM Telco Customer Churn,1409.0,1409.0,0.7785663591199432,0.78708303761533,4.0,Real training dataset; simulated current data,,,,,,
 ,,,,,,,,2026-10-23T19:21:52,208.0,IBM Telco Customer Churn (GitHub URL),2.0,2.0,data\simulated\simulated_current_2026-10-23.csv
+,,,,,,,,2026-10-24T06:02:27,245.0,IBM Telco Customer Churn (GitHub URL),2.0,2.0,data/simulated/simulated_current_2026-10-24.csv
