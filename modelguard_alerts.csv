@@ -21,3 +21,5 @@ KS Distribution Test,MonthlyCharges,0.2434,Review,Simulated current dataset,,,,
 ,,,,,2026-10-30T06:07:51,TotalCharges,High,High simulated distribution drift detected for TotalCharges.
 ,,,,,2026-10-31T06:02:36,customerID,High,High simulated distribution drift detected for customerID.
 ,,,,,2026-10-31T06:02:36,TotalCharges,High,High simulated distribution drift detected for TotalCharges.
+,,,,,2026-11-01T06:32:24,customerID,High,High simulated distribution drift detected for customerID.
+,,,,,2026-11-01T06:32:24,TotalCharges,High,High simulated distribution drift detected for TotalCharges.
