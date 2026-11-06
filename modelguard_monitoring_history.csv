@@ -14,3 +14,4 @@ Run Time,Dataset,Reference Rows,Simulated Current Rows,Random Forest Accuracy,AN
 ,,,,,,,,2026-11-03T07:03:21,250.0,IBM Telco Customer Churn (GitHub URL),2.0,2.0,data/simulated/simulated_current_2026-11-03.csv
 ,,,,,,,,2026-11-04T06:47:05,204.0,IBM Telco Customer Churn (GitHub URL),2.0,2.0,data/simulated/simulated_current_2026-11-04.csv
 ,,,,,,,,2026-11-05T07:07:35,213.0,IBM Telco Customer Churn (GitHub URL),2.0,2.0,data/simulated/simulated_current_2026-11-05.csv
+,,,,,,,,2026-11-06T07:07:02,204.0,IBM Telco Customer Churn (GitHub URL),2.0,2.0,data/simulated/simulated_current_2026-11-06.csv
