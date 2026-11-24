@@ -1,17 +1,24 @@
+
 from pathlib import Path
 from datetime import datetime, date
 import argparse
 import json
 import sys
+import os
 
 import numpy as np
 import pandas as pd
 import streamlit as st
 import joblib
 
+from groq import Groq
+from genai.modelguard_engine import ModelGuardEngine
+
+
 # =====================================================
 # CONFIGURATION
 # =====================================================
+
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 SIMULATED_DIR = DATA_DIR / "simulated"
@@ -25,7 +32,10 @@ REPORTS = {
     "Monitoring History": "modelguard_monitoring_history.csv",
 }
 
-REFERENCE_DATA_URL = "https://raw.githubusercontent.com/IBM/telco-customer-churn-on-icp4d/master/data/Telco-Customer-Churn.csv"
+REFERENCE_DATA_URL = (
+    "https://raw.githubusercontent.com/IBM/telco-customer-churn-on-icp4d/"
+    "master/data/Telco-Customer-Churn.csv"
+)
 
 REFERENCE_CANDIDATES = [
     BASE_DIR / "reference_data.csv",
@@ -43,8 +53,9 @@ PSI_HIGH = 0.25
 
 
 # =====================================================
-# SAFE FILE FUNCTIONS
+# FILE FUNCTIONS
 # =====================================================
+
 def read_csv_safe(path):
     try:
         path = Path(path)
@@ -90,12 +101,10 @@ def find_reference_file():
     if len(candidates) == 1:
         return candidates[0]
 
-    # No local CSV found: use the project's original GitHub dataset URL.
     return REFERENCE_DATA_URL
 
 
 def reference_source_name(source):
-    """Readable source label for either a local file or a URL."""
     source_text = str(source)
     if source_text.startswith(("http://", "https://")):
         return "IBM Telco Customer Churn (GitHub URL)"
@@ -105,6 +114,7 @@ def reference_source_name(source):
 # =====================================================
 # PSI DRIFT DETECTION
 # =====================================================
+
 def numeric_psi(reference, current, bins=10):
     ref = pd.to_numeric(reference, errors="coerce").dropna().to_numpy()
     cur = pd.to_numeric(current, errors="coerce").dropna().to_numpy()
@@ -173,6 +183,7 @@ def categorical_psi(reference, current):
 # =====================================================
 # KS TEST
 # =====================================================
+
 def ks_test(reference, current):
     try:
         from scipy.stats import ks_2samp
@@ -189,7 +200,6 @@ def ks_test(reference, current):
             return np.nan, np.nan
 
         result = ks_2samp(ref, cur)
-
         return float(result.statistic), float(result.pvalue)
 
     except Exception:
@@ -199,6 +209,7 @@ def ks_test(reference, current):
 # =====================================================
 # SIMULATE 200–250 ROWS
 # =====================================================
+
 def generate_simulated_data(reference_path):
     reference = pd.read_csv(reference_path)
 
@@ -206,7 +217,6 @@ def generate_simulated_data(reference_path):
         raise ValueError("The reference dataset is empty.")
 
     rng = np.random.default_rng()
-
     row_count = int(rng.integers(200, 251))
 
     current = reference.sample(
@@ -215,8 +225,6 @@ def generate_simulated_data(reference_path):
         random_state=int(rng.integers(0, 2**31 - 1)),
     ).reset_index(drop=True)
 
-    # Add small changes to numeric features.
-    # This is simulated data, not real incoming customer data.
     for col in reference.columns:
         if pd.api.types.is_numeric_dtype(reference[col]):
             original = pd.to_numeric(
@@ -245,13 +253,13 @@ def generate_simulated_data(reference_path):
 # =====================================================
 # DAILY MONITORING UPDATE
 # =====================================================
+
 def run_daily_update(force=False):
     reference_path = find_reference_file()
 
     if reference_path is None:
         raise FileNotFoundError(
-            "Could not find a local reference CSV or load the configured dataset URL. "
-            "Check your internet connection and try again."
+            "Could not find a local reference CSV or load the configured dataset URL."
         )
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -299,6 +307,7 @@ def run_daily_update(force=False):
 
         if pd.api.types.is_numeric_dtype(reference[col]):
             psi = numeric_psi(reference[col], current[col])
+
             statistic, p_value = ks_test(
                 reference[col], current[col]
             )
@@ -362,6 +371,7 @@ def run_daily_update(force=False):
     save_csv(psi_df, BASE_DIR / REPORTS["PSI Report"])
     save_csv(ks_df, BASE_DIR / REPORTS["KS Report"])
     save_csv(quality_df, BASE_DIR / REPORTS["Data Quality"])
+
     save_csv(
         alerts_df,
         BASE_DIR / REPORTS["Alerts"],
@@ -369,7 +379,10 @@ def run_daily_update(force=False):
     )
 
     high_count = int(
-        (pd.to_numeric(psi_df["psi"], errors="coerce") >= PSI_HIGH).sum()
+        (
+            pd.to_numeric(psi_df["psi"], errors="coerce")
+            >= PSI_HIGH
+        ).sum()
     )
 
     history_row = pd.DataFrame([{
@@ -410,6 +423,7 @@ def run_daily_update(force=False):
 # =====================================================
 # DASHBOARD HELPERS
 # =====================================================
+
 def load_report(name):
     return read_csv_safe(BASE_DIR / REPORTS[name])
 
@@ -451,22 +465,36 @@ def safe_model_load(path):
 # =====================================================
 # CHART HELPERS
 # =====================================================
+
 def show_pie_chart(data, name_col, value_col, title):
-    """Display a pie chart using Streamlit's built-in Vega-Lite renderer."""
     chart_data = data[[name_col, value_col]].copy()
-    chart_data[name_col] = chart_data[name_col].fillna("Unspecified").astype(str)
-    chart_data[value_col] = pd.to_numeric(chart_data[value_col], errors="coerce")
+    chart_data[name_col] = (
+        chart_data[name_col].fillna("Unspecified").astype(str)
+    )
+    chart_data[value_col] = pd.to_numeric(
+        chart_data[value_col], errors="coerce"
+    )
     chart_data = chart_data.dropna()
     chart_data = chart_data[chart_data[value_col] > 0]
+
     if chart_data.empty:
         st.info("No data available for this pie chart yet.")
         return
+
     spec = {
         "title": title,
         "data": {"values": chart_data.to_dict(orient="records")},
-        "mark": {"type": "arc", "outerRadius": 120, "stroke": "#ffffff", "strokeWidth": 2},
+        "mark": {
+            "type": "arc",
+            "outerRadius": 120,
+            "stroke": "#ffffff",
+            "strokeWidth": 2,
+        },
         "encoding": {
-            "theta": {"field": value_col, "type": "quantitative"},
+            "theta": {
+                "field": value_col,
+                "type": "quantitative",
+            },
             "color": {
                 "field": name_col,
                 "type": "nominal",
@@ -474,50 +502,241 @@ def show_pie_chart(data, name_col, value_col, title):
                 "scale": {"scheme": "tableau10"},
             },
             "tooltip": [
-                {"field": name_col, "type": "nominal", "title": name_col},
-                {"field": value_col, "type": "quantitative", "title": value_col},
+                {
+                    "field": name_col,
+                    "type": "nominal",
+                    "title": name_col,
+                },
+                {
+                    "field": value_col,
+                    "type": "quantitative",
+                    "title": value_col,
+                },
             ],
         },
         "view": {"stroke": None},
     }
+
     st.vega_lite_chart(spec, use_container_width=True)
 
 
-def show_colored_bar_chart(data, category_col, value_col, title, color_scheme="blues"):
-    """Render a colorful, tooltip-enabled bar chart with explicit category colors."""
+def show_colored_bar_chart(
+    data, category_col, value_col, title, color_scheme="blues"
+):
     chart_data = data[[category_col, value_col]].copy()
-    chart_data[category_col] = chart_data[category_col].fillna("Unspecified").astype(str)
-    chart_data[value_col] = pd.to_numeric(chart_data[value_col], errors="coerce")
+    chart_data[category_col] = (
+        chart_data[category_col].fillna("Unspecified").astype(str)
+    )
+    chart_data[value_col] = pd.to_numeric(
+        chart_data[value_col], errors="coerce"
+    )
     chart_data = chart_data.dropna()
+
     if chart_data.empty:
         st.info("No data available for this chart yet.")
         return
+
     spec = {
         "title": title,
         "data": {"values": chart_data.to_dict(orient="records")},
-        "mark": {"type": "bar", "cornerRadiusTopLeft": 5, "cornerRadiusTopRight": 5},
+        "mark": {
+            "type": "bar",
+            "cornerRadiusTopLeft": 5,
+            "cornerRadiusTopRight": 5,
+        },
         "encoding": {
-            "x": {"field": category_col, "type": "nominal", "sort": "-y",
-                  "axis": {"labelAngle": -35, "labelLimit": 180}},
-            "y": {"field": value_col, "type": "quantitative"},
-            "color": {"field": category_col, "type": "nominal",
-                      "scale": {"scheme": color_scheme}, "legend": None},
+            "x": {
+                "field": category_col,
+                "type": "nominal",
+                "sort": "-y",
+                "axis": {
+                    "labelAngle": -35,
+                    "labelLimit": 180,
+                },
+            },
+            "y": {
+                "field": value_col,
+                "type": "quantitative",
+            },
+            "color": {
+                "field": category_col,
+                "type": "nominal",
+                "scale": {"scheme": color_scheme},
+                "legend": None,
+            },
             "tooltip": [
-                {"field": category_col, "type": "nominal", "title": category_col},
-                {"field": value_col, "type": "quantitative", "title": value_col},
+                {
+                    "field": category_col,
+                    "type": "nominal",
+                    "title": category_col,
+                },
+                {
+                    "field": value_col,
+                    "type": "quantitative",
+                    "title": value_col,
+                },
             ],
         },
-        "config": {"view": {"stroke": None}, "axis": {"grid": True}},
+        "config": {
+            "view": {"stroke": None},
+            "axis": {"grid": True},
+        },
     }
+
     st.vega_lite_chart(spec, use_container_width=True)
 
 
 # =====================================================
-# STREAMLIT DASHBOARD
+# GENAI SETUP
 # =====================================================
+
+def create_genai_engine(psi, ks, alerts):
+    """
+    Initialize Groq only for the interactive dashboard.
+    The daily GitHub Actions command does not need an API key.
+    """
+
+    try:
+        api_key = st.secrets.get("GROQ_API_KEY", "")
+    except Exception:
+        api_key = os.getenv("GROQ_API_KEY", "")
+
+    if not api_key:
+        return None, (
+            "GROQ_API_KEY is missing. Add it to Streamlit "
+            "Community Cloud → App settings → Secrets."
+        )
+
+    try:
+        client = Groq(api_key=api_key)
+
+        engine = ModelGuardEngine(
+            client=client,
+            psi_report=psi.copy(),
+            ks_report=ks.copy(),
+            alerts_df=alerts.copy(),
+        )
+
+        return engine, None
+
+    except Exception as exc:
+        return None, str(exc)
+
+
+# =====================================================
+# GENAI ASSISTANT PAGE
+# =====================================================
+
+def show_genai_page(psi, ks, quality, alerts, history):
+    st.header("🤖 ModelGuard AI Assistant")
+
+    st.caption(
+        "Ask questions about your actual saved monitoring reports. "
+        "The assistant uses the evidence currently available in this dashboard."
+    )
+
+    st.info(
+        "This project uses simulated daily data. "
+        "Drift alerts are not confirmed production incidents."
+    )
+
+    engine, error = create_genai_engine(psi, ks, alerts)
+
+    if error:
+        st.error(error)
+        return
+
+    feature_label = st.selectbox(
+        "Choose an AI capability",
+        [
+            "Monitoring Assistant",
+            "Incident Investigator",
+            "Performance Advisor",
+        ],
+        key="genai_capability",
+    )
+
+    feature_mapping = {
+        "Monitoring Assistant": "assistant",
+        "Incident Investigator": "incident",
+        "Performance Advisor": "performance",
+    }
+
+    st.caption(
+        "You can ask your own questions. You are not restricted "
+        "to the suggested examples."
+    )
+
+    with st.expander("Example questions"):
+        st.markdown("""
+        - Which features have the highest PSI drift?
+        - Explain the KS results in simple terms.
+        - What should engineers investigate before retraining?
+        - What is the difference between PSI and KS?
+        - What additional evidence is needed to confirm model degradation?
+        """)
+
+    if "modelguard_chat" not in st.session_state:
+        st.session_state.modelguard_chat = []
+
+    if st.button("Clear conversation"):
+        st.session_state.modelguard_chat = []
+        st.rerun()
+
+    for item in st.session_state.modelguard_chat:
+        with st.chat_message(item["role"]):
+            st.markdown(item["content"])
+
+    question = st.chat_input(
+        "Ask ModelGuard AI a question..."
+    )
+
+    if question:
+        st.session_state.modelguard_chat.append({
+            "role": "user",
+            "content": question,
+        })
+
+        with st.chat_message("user"):
+            st.markdown(question)
+
+        with st.chat_message("assistant"):
+            with st.spinner(
+                "ModelGuard AI is analysing your monitoring evidence..."
+            ):
+                try:
+                    response = engine.ask(
+                        question=question,
+                        feature=feature_mapping[feature_label],
+                    )
+
+                    st.markdown(response)
+
+                    st.session_state.modelguard_chat.append({
+                        "role": "assistant",
+                        "content": response,
+                    })
+
+                except Exception as exc:
+                    message = str(exc)
+
+                    if "429" in message or "rate_limit" in message.lower():
+                        st.warning(
+                            "Groq rate limit reached. Wait a little "
+                            "and try again."
+                        )
+                    else:
+                        st.error(f"ModelGuard AI error: {message}")
+
+
+# =====================================================
+# MAIN DASHBOARD
+# =====================================================
+
 def dashboard():
+
     st.set_page_config(
-        page_title="ModelGuard | ML Monitoring",
+        page_title="ModelGuard AI",
         page_icon="🛡️",
         layout="wide",
     )
@@ -537,13 +756,13 @@ def dashboard():
     </style>
     """, unsafe_allow_html=True)
 
-    st.title("🛡️ ModelGuard")
+    st.title("🛡️ ModelGuard AI")
     st.caption(
-        "Explainable ML Monitoring and Early-Warning Platform"
+        "Explainable ML Monitoring | Drift Detection | GenAI Investigation"
     )
 
     with st.sidebar:
-        st.header("Monitoring")
+        st.title("ModelGuard AI")
         st.write("Daily simulated batch: 200–250 rows")
 
         page = st.radio(
@@ -556,52 +775,82 @@ def dashboard():
                 "Monitoring History",
                 "Model Registry",
                 "Raw Reports",
+                "GenAI Assistant",
             ],
         )
 
-    # Check the date on every Streamlit rerun. The marker prevents duplicate
-    # runs on the same date, while a rerun after midnight can create a new batch.
+    # Keep the existing automatic daily update behavior.
     try:
         result = run_daily_update(force=False)
+
         if result["status"] == "Updated":
             st.toast(
                 f"Daily simulated batch created: {result['rows']} rows"
             )
+
     except Exception as exc:
         st.warning(f"Daily update unavailable: {exc}")
 
     marker_path = DATA_DIR / "last_daily_update.json"
+
     if marker_path.exists():
         try:
-            marker_data = json.loads(marker_path.read_text(encoding="utf-8"))
-            st.sidebar.caption(f"Last simulated update: {marker_data.get('updated_at', 'Unknown')}")
-            st.sidebar.caption(f"Rows in latest batch: {marker_data.get('rows', 'Unknown')}")
-        except Exception:
-            st.sidebar.caption("Daily update status could not be read.")
+            marker_data = json.loads(
+                marker_path.read_text(encoding="utf-8")
+            )
 
+            st.sidebar.caption(
+                "Last simulated update: "
+                + str(marker_data.get("updated_at", "Unknown"))
+            )
+
+            st.sidebar.caption(
+                "Rows in latest batch: "
+                + str(marker_data.get("rows", "Unknown"))
+            )
+
+        except Exception:
+            st.sidebar.caption(
+                "Daily update status could not be read."
+            )
+
+    # Load the latest reports from the original ModelGuard project.
     psi = load_report("PSI Report")
     ks = load_report("KS Report")
     quality = load_report("Data Quality")
     alerts = load_report("Alerts")
     history = load_report("Monitoring History")
 
+    # =================================================
+    # OVERVIEW
+    # =================================================
+
     if page == "Overview":
+
         st.header("Dashboard Overview")
 
-        psi_col = find_col(psi, ["psi", "PSI", "psi_value"])
+        psi_col = find_col(
+            psi, ["psi", "PSI", "psi_value"]
+        )
+
         feature_col = find_col(
             psi, ["feature", "Feature", "column", "Column"]
         )
+
         severity_col = find_col(
             alerts, ["severity", "Severity", "level", "Level"]
         )
 
         high_drift = 0
+
         if psi_col and not psi.empty:
-            values = pd.to_numeric(psi[psi_col], errors="coerce")
+            values = pd.to_numeric(
+                psi[psi_col], errors="coerce"
+            )
             high_drift = int((values >= PSI_HIGH).sum())
 
         c1, c2, c3, c4 = st.columns(4)
+
         c1.metric("Features Checked", len(psi))
         c2.metric("High PSI Features", high_drift)
         c3.metric("Total Alerts", len(alerts))
@@ -614,15 +863,19 @@ def dashboard():
 
             if not psi.empty and psi_col and feature_col:
                 chart = psi[[feature_col, psi_col]].copy()
+
                 chart[psi_col] = pd.to_numeric(
                     chart[psi_col], errors="coerce"
                 )
+
                 chart = chart.dropna()
 
                 if not chart.empty:
                     show_colored_bar_chart(
-                        chart, feature_col, psi_col,
-                        "PSI by feature (higher values indicate more drift)",
+                        chart,
+                        feature_col,
+                        psi_col,
+                        "PSI by feature",
                         color_scheme="redyellowblue",
                     )
                 else:
@@ -640,181 +893,327 @@ def dashboard():
                     .astype(str)
                     .value_counts()
                 )
-                severity_counts = counts.rename_axis("Severity").reset_index(name="Alerts")
-                show_pie_chart(severity_counts, "Severity", "Alerts", "Alerts by severity")
+
+                severity_counts = (
+                    counts.rename_axis("Severity")
+                    .reset_index(name="Alerts")
+                )
+
+                show_pie_chart(
+                    severity_counts,
+                    "Severity",
+                    "Alerts",
+                    "Alerts by severity",
+                )
+
                 show_colored_bar_chart(
-                    severity_counts, "Severity", "Alerts",
-                    "Alert count by severity", color_scheme="tableau10"
+                    severity_counts,
+                    "Severity",
+                    "Alerts",
+                    "Alert count by severity",
+                    color_scheme="tableau10",
                 )
             else:
                 st.info("No alerts available.")
 
-        # Drift severity distribution as a pie chart.
         if not psi.empty and psi_col:
-            psi_values = pd.to_numeric(psi[psi_col], errors="coerce")
+            psi_values = pd.to_numeric(
+                psi[psi_col], errors="coerce"
+            )
+
             drift_summary = pd.DataFrame({
                 "Drift Level": np.select(
-                    [psi_values >= PSI_HIGH, psi_values >= PSI_LOW],
-                    ["High drift", "Moderate drift"],
+                    [
+                        psi_values >= PSI_HIGH,
+                        psi_values >= PSI_LOW,
+                    ],
+                    [
+                        "High drift",
+                        "Moderate drift",
+                    ],
                     default="Low drift",
                 )
             })
-            drift_summary = drift_summary["Drift Level"].value_counts().rename_axis("Drift Level").reset_index(name="Features")
+
+            drift_summary = (
+                drift_summary["Drift Level"]
+                .value_counts()
+                .rename_axis("Drift Level")
+                .reset_index(name="Features")
+            )
+
             st.subheader("Drift Level Distribution")
-            show_pie_chart(drift_summary, "Drift Level", "Features", "Features by drift level")
-            st.caption("PSI guide: below 0.10 = low; 0.10–0.25 = review; 0.25 or above = high drift.")
+
+            show_pie_chart(
+                drift_summary,
+                "Drift Level",
+                "Features",
+                "Features by drift level",
+            )
+
+            st.caption(
+                "PSI guide: below 0.10 = low; "
+                "0.10–0.25 = review; 0.25 or above = high drift."
+            )
 
         st.subheader("Monitoring Pipeline")
+
         st.markdown("""
-        <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;margin:12px 0 22px 0;">
-          <div style="border:1px solid #64748b;border-radius:10px;padding:12px;text-align:center;min-width:110px;">Reference<br><b>Dataset</b></div>
-          <div style="font-size:24px;">→</div>
-          <div style="border:1px solid #64748b;border-radius:10px;padding:12px;text-align:center;min-width:110px;">Daily<br><b>Simulation</b></div>
-          <div style="font-size:24px;">→</div>
-          <div style="border:1px solid #64748b;border-radius:10px;padding:12px;text-align:center;min-width:110px;">Data<br><b>Quality</b></div>
-          <div style="font-size:24px;">→</div>
-          <div style="border:1px solid #64748b;border-radius:10px;padding:12px;text-align:center;min-width:110px;">PSI + KS<br><b>Drift Tests</b></div>
-          <div style="font-size:24px;">→</div>
-          <div style="border:1px solid #64748b;border-radius:10px;padding:12px;text-align:center;min-width:110px;">Alerts &amp;<br><b>Reports</b></div>
+        <div style="display:flex;flex-wrap:wrap;align-items:center;
+        justify-content:center;gap:8px;margin:12px 0 22px 0;">
+        <div style="border:1px solid #64748b;border-radius:10px;
+        padding:12px;text-align:center;">Reference<br><b>Dataset</b></div>
+        <div style="font-size:24px;">→</div>
+        <div style="border:1px solid #64748b;border-radius:10px;
+        padding:12px;text-align:center;">Daily<br><b>Simulation</b></div>
+        <div style="font-size:24px;">→</div>
+        <div style="border:1px solid #64748b;border-radius:10px;
+        padding:12px;text-align:center;">Data<br><b>Quality</b></div>
+        <div style="font-size:24px;">→</div>
+        <div style="border:1px solid #64748b;border-radius:10px;
+        padding:12px;text-align:center;">PSI + KS<br><b>Drift Tests</b></div>
+        <div style="font-size:24px;">→</div>
+        <div style="border:1px solid #64748b;border-radius:10px;
+        padding:12px;text-align:center;">Alerts &amp;<br><b>Reports</b></div>
         </div>
         """, unsafe_allow_html=True)
 
         st.subheader("Latest Monitoring History")
         show_table(history.tail(10))
 
+    # =================================================
+    # DRIFT ANALYSIS
+    # =================================================
+
     elif page == "Drift Analysis":
+
         st.header("Drift Analysis")
-        tab1, tab2 = st.tabs(["PSI Analysis", "KS Test"])
+
+        tab1, tab2 = st.tabs([
+            "PSI Analysis",
+            "KS Test",
+        ])
 
         with tab1:
             show_table(psi)
-            pcol = find_col(psi, ["psi", "PSI", "psi_value"])
+
+            pcol = find_col(
+                psi, ["psi", "PSI", "psi_value"]
+            )
+
             fcol = find_col(
                 psi, ["feature", "Feature", "column", "Column"]
             )
 
             if not psi.empty and pcol and fcol:
                 chart = psi[[fcol, pcol]].copy()
+
                 chart[pcol] = pd.to_numeric(
                     chart[pcol], errors="coerce"
                 )
+
                 chart = chart.dropna()
+
                 if not chart.empty:
                     show_colored_bar_chart(
-                        chart, fcol, pcol, "PSI by feature",
-                        color_scheme="redyellowblue"
+                        chart,
+                        fcol,
+                        pcol,
+                        "PSI by feature",
+                        color_scheme="redyellowblue",
                     )
 
             download_csv(psi, REPORTS["PSI Report"])
 
         with tab2:
             show_table(ks)
+
             scol = find_col(
-                ks, ["ks_statistic", "KS Statistic", "statistic"]
+                ks,
+                ["ks_statistic", "KS Statistic", "statistic"],
             )
+
             fcol = find_col(
                 ks, ["feature", "Feature", "column", "Column"]
             )
 
             if not ks.empty and scol and fcol:
                 chart = ks[[fcol, scol]].copy()
+
                 chart[scol] = pd.to_numeric(
                     chart[scol], errors="coerce"
                 )
+
                 chart = chart.dropna()
+
                 if not chart.empty:
                     show_colored_bar_chart(
-                        chart, fcol, scol, "KS statistic by feature",
-                        color_scheme="viridis"
+                        chart,
+                        fcol,
+                        scol,
+                        "KS statistic by feature",
+                        color_scheme="viridis",
                     )
 
             download_csv(ks, REPORTS["KS Report"])
 
+    # =================================================
+    # DATA QUALITY
+    # =================================================
+
     elif page == "Data Quality":
+
         st.header("Data Quality")
+
         show_table(quality)
 
         missing_col = find_col(
             quality,
-            ["missing_values", "Missing Values", "missing_count"],
+            [
+                "missing_values",
+                "Missing Values",
+                "missing_count",
+            ],
         )
+
         feature_col = find_col(
-            quality, ["feature", "Feature", "column", "Column"]
+            quality,
+            ["feature", "Feature", "column", "Column"],
         )
 
         if missing_col and not quality.empty:
+
             missing = pd.to_numeric(
                 quality[missing_col], errors="coerce"
             ).fillna(0)
 
-            st.metric("Total Missing Values", int(missing.sum()))
+            st.metric(
+                "Total Missing Values",
+                int(missing.sum()),
+            )
 
             if feature_col:
                 chart = quality[[feature_col]].copy()
                 chart["Missing Values"] = missing
+
                 show_colored_bar_chart(
-                    chart, feature_col, "Missing Values",
-                    "Missing values by feature", color_scheme="oranges"
+                    chart,
+                    feature_col,
+                    "Missing Values",
+                    "Missing values by feature",
+                    color_scheme="oranges",
                 )
 
-        download_csv(quality, REPORTS["Data Quality"])
+        download_csv(
+            quality,
+            REPORTS["Data Quality"],
+        )
+
+    # =================================================
+    # ALERTS
+    # =================================================
 
     elif page == "Alerts & Incidents":
+
         st.header("Alerts & Incidents")
 
         if alerts.empty:
             st.success("No saved alerts.")
+
         else:
-            if severity_col := find_col(
-                alerts, ["severity", "Severity", "level", "Level"]
-            ):
+            severity_col = find_col(
+                alerts,
+                ["severity", "Severity", "level", "Level"],
+            )
+
+            if severity_col:
                 severity_counts = (
-                    alerts[severity_col].fillna("Unspecified").astype(str)
-                    .value_counts().rename_axis("Severity").reset_index(name="Alerts")
+                    alerts[severity_col]
+                    .fillna("Unspecified")
+                    .astype(str)
+                    .value_counts()
+                    .rename_axis("Severity")
+                    .reset_index(name="Alerts")
                 )
+
                 show_colored_bar_chart(
-                    severity_counts, "Severity", "Alerts",
-                    "Alerts by severity", color_scheme="tableau10"
+                    severity_counts,
+                    "Severity",
+                    "Alerts",
+                    "Alerts by severity",
+                    color_scheme="tableau10",
                 )
 
             show_table(alerts.tail(250).iloc[::-1])
-            download_csv(alerts, REPORTS["Alerts"])
+
+            download_csv(
+                alerts,
+                REPORTS["Alerts"],
+            )
+
+    # =================================================
+    # MONITORING HISTORY
+    # =================================================
 
     elif page == "Monitoring History":
+
         st.header("Monitoring History")
+
         show_table(history)
 
         if not history.empty:
+
             numeric_cols = history.select_dtypes(
                 include="number"
             ).columns.tolist()
 
             if numeric_cols:
+
                 metric = st.selectbox(
-                    "Choose a metric", numeric_cols
+                    "Choose a metric",
+                    numeric_cols,
                 )
+
                 chart_col1, chart_col2 = st.columns(2)
+
                 with chart_col1:
                     st.subheader("Trend line")
                     st.line_chart(history[metric])
+
                 with chart_col2:
                     st.subheader("Area trend")
                     st.area_chart(history[metric])
 
-        download_csv(history, REPORTS["Monitoring History"])
+        download_csv(
+            history,
+            REPORTS["Monitoring History"],
+        )
+
+    # =================================================
+    # MODEL REGISTRY
+    # =================================================
 
     elif page == "Model Registry":
+
         st.header("Model Registry")
 
-        registry_path = BASE_DIR / "models" / "registry.json"
+        registry_path = (
+            BASE_DIR / "models" / "registry.json"
+        )
 
         if registry_path.exists():
             try:
-                st.json(json.loads(
-                    registry_path.read_text(encoding="utf-8")
-                ))
+                st.json(
+                    json.loads(
+                        registry_path.read_text(
+                            encoding="utf-8"
+                        )
+                    )
+                )
             except Exception as exc:
-                st.warning(f"Could not read registry: {exc}")
+                st.warning(
+                    f"Could not read registry: {exc}"
+                )
 
         model_files = sorted(
             set(
@@ -829,8 +1228,12 @@ def dashboard():
             st.dataframe(
                 pd.DataFrame([
                     {
-                        "Model File": str(p.relative_to(BASE_DIR)),
-                        "Size KB": round(p.stat().st_size / 1024, 2),
+                        "Model File": str(
+                            p.relative_to(BASE_DIR)
+                        ),
+                        "Size KB": round(
+                            p.stat().st_size / 1024, 2
+                        ),
                     }
                     for p in model_files
                 ]),
@@ -842,7 +1245,9 @@ def dashboard():
 
         rf_path = BASE_DIR / "random_forest_pipeline.pkl"
 
-        if rf_path.exists() and st.button("Test-load Random Forest"):
+        if rf_path.exists() and st.button(
+            "Test-load Random Forest"
+        ):
             model, error = safe_model_load(rf_path)
 
             if error:
@@ -852,31 +1257,57 @@ def dashboard():
                     f"Model loaded: {type(model).__name__}"
                 )
 
+    # =================================================
+    # RAW REPORTS
+    # =================================================
+
     elif page == "Raw Reports":
+
         st.header("Raw Reports")
 
         for title, filename in REPORTS.items():
+
             with st.expander(title):
                 df = load_report(title)
                 show_table(df)
                 download_csv(df, filename)
 
+    # =================================================
+    # GENAI ASSISTANT
+    # =================================================
+
+    elif page == "GenAI Assistant":
+
+        show_genai_page(
+            psi=psi,
+            ks=ks,
+            quality=quality,
+            alerts=alerts,
+            history=history,
+        )
+
     st.divider()
+
     st.caption(
-        "ModelGuard | Local prototype | Simulated data is not live production data."
+        "ModelGuard AI | ML monitoring and GenAI prototype | "
+        "Simulated data is not live production data."
     )
 
 
 # =====================================================
 # COMMAND LINE
 # =====================================================
+
 def main():
+
     parser = argparse.ArgumentParser()
+
     parser.add_argument(
         "--daily-update",
         action="store_true",
         help="Generate today's simulated dataset and reports",
     )
+
     parser.add_argument(
         "--force",
         action="store_true",
@@ -886,12 +1317,21 @@ def main():
     args, _ = parser.parse_known_args()
 
     if args.daily_update:
+
         try:
-            result = run_daily_update(force=args.force)
+            result = run_daily_update(
+                force=args.force
+            )
+
             print(json.dumps(result, indent=2))
+
         except Exception as exc:
-            print(f"Monitoring failed: {exc}", file=sys.stderr)
+            print(
+                f"Monitoring failed: {exc}",
+                file=sys.stderr,
+            )
             raise SystemExit(1)
+
     else:
         dashboard()
 
