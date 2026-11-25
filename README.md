@@ -1,155 +1,222 @@
 
-# ModelGuard
-## Explainable ML Monitoring and Early-Warning Platform
+# 🛡️ ModelGuard AI
+### Explainable Machine Learning Monitoring & GenAI-Powered Model Analysis
 
-ModelGuard is a machine-learning monitoring and early-warning platform built using Python and Streamlit. It is designed to help monitor changes in data distributions, evaluate data quality, track monitoring results, and identify potential issues that may affect machine-learning model performance.
+ModelGuard AI is an intelligent machine learning monitoring platform designed to monitor model-related data changes, detect data drift, evaluate data quality, track model performance, and investigate potential monitoring issues using Generative AI.
 
-The project combines statistical drift detection, data quality checks, monitoring reports, and model artifacts in an interactive dashboard.
+The platform combines traditional machine learning monitoring techniques with GenAI-powered explanations to make model monitoring more understandable and accessible.
 
-## Table of Contents
+It provides an interactive Streamlit dashboard with monitoring reports, statistical drift analysis, alerts, model comparisons, and AI-powered assistance.
 
-- Overview
-- Features
-- Monitoring Techniques
-- Machine Learning Models
-- Technologies Used
-- Project Structure
-- Installation
-- Running the Application
-- Monitoring Workflow
-- Project Limitations
-- Future Improvements
-- Author
+---
 
-## 1. Overview
+## 🎯 Project Objectives
 
-Machine-learning models may encounter changes in incoming data after deployment. These changes can affect the reliability of predictions and indicate that further investigation may be necessary.
+Machine learning models can experience performance degradation when real-world data changes over time. This phenomenon is commonly associated with data drift and changing data distributions.
 
-ModelGuard provides a dashboard for examining data drift, checking data quality, viewing monitoring history, and reviewing alerts and incidents.
+ModelGuard AI aims to:
 
-The project is intended for learning, experimentation, and portfolio demonstration of machine-learning monitoring concepts.
+- Detect changes in incoming data distributions.
+- Monitor data quality and identify potential issues.
+- Generate drift reports using statistical techniques.
+- Track monitoring history and alerts.
+- Compare machine learning model performance.
+- Use Generative AI to explain monitoring findings.
+- Provide AI-assisted incident investigation and performance recommendations.
+- Package the application using Docker for portability.
 
-## 2. Features
+---
 
-### Interactive Monitoring Dashboard
-- Streamlit-based user interface.
-- Centralized view of monitoring results.
-- Access to reports and monitoring information.
+## 🚀 Key Features
 
-### Data Drift Detection
-- Population Stability Index (PSI) analysis.
-- Kolmogorov–Smirnov (KS) analysis.
-- Comparison of reference and current data distributions.
-- Identification of potentially significant distribution changes.
+### 1. Monitoring Dashboard
+- Interactive Streamlit dashboard.
+- Overview of monitoring activities.
+- Summary of detected drift.
+- Monitoring metrics and visualizations.
+- Centralized monitoring information.
 
-### Data Quality Monitoring
-- Review of data quality reports.
-- Support for examining potential data issues.
-- Monitoring of incoming data batches.
+### 2. Data Drift Detection
+Uses statistical techniques to identify changes between reference and current datasets.
 
-### Alerts and Incidents
-- View recorded alerts.
-- Review incident information.
-- Track potential issues identified during monitoring.
+**Population Stability Index (PSI)**
+- Measures changes in feature distributions.
+- Categorizes drift levels.
+- Helps identify features requiring investigation.
 
-### Monitoring History
-- Store and review monitoring history.
-- Examine previously generated monitoring reports.
-- Review available historical results.
+**Kolmogorov-Smirnov (KS) Test**
+- Compares reference and current distributions.
+- Calculates KS statistics and p-values.
+- Helps identify statistically significant distribution changes.
 
-### Simulated Data
-- Work with simulated current-data batches.
-- Test monitoring workflows without requiring a live production data source.
+### 3. Data Quality Monitoring
+- Monitors missing values.
+- Identifies data quality issues.
+- Generates data quality reports.
+- Helps assess dataset reliability.
 
-### Machine Learning Model Artifacts
-- Random Forest pipeline.
-- Artificial Neural Network (ANN) model.
-- ANN preprocessing artifact.
+### 4. Alerts & Incident Management
+- Tracks detected drift conditions.
+- Generates monitoring alerts.
+- Maintains incident information.
+- Supports investigation of potential monitoring issues.
 
-## 3. Monitoring Techniques
+### 5. Model Performance Analysis
+Compares two machine learning models:
 
-### Population Stability Index (PSI)
+- Random Forest
+- Artificial Neural Network (ANN)
 
-PSI is a statistical measure used to compare the distribution of a variable between a reference dataset and a current dataset.
+Evaluation metrics include:
+- Accuracy
+- Precision
+- Recall
+- F1 Score
+- ROC-AUC
 
-It can help identify changes in the distribution of incoming data that may warrant investigation.
+### 6. GenAI Assistant
+An AI-powered assistant integrated using the Groq API.
 
-### Kolmogorov–Smirnov (KS) Analysis
+Capabilities:
+- Answers questions about ModelGuard.
+- Explains drift detection results.
+- Summarizes monitoring findings.
+- Helps users understand model monitoring concepts.
 
-The Kolmogorov–Smirnov test compares two distributions to assess whether they differ statistically.
+### 7. AI Incident Investigator
+- Investigates detected drift findings.
+- Explains potentially affected features.
+- Provides possible causes and investigation suggestions.
+- Helps users understand monitoring incidents.
 
-In a monitoring workflow, it can be used to examine distribution changes between reference and current data.
+### 8. AI Performance Advisor
+- Compares Random Forest and ANN performance.
+- Explains precision and recall trade-offs.
+- Provides AI-generated model improvement suggestions.
+- Helps interpret evaluation metrics.
 
-### Data Quality Monitoring
+### 9. Docker Support
+- Containerized Streamlit application.
+- Docker image available on Docker Hub.
+- Simplified application setup.
+- Portable execution across supported Docker environments.
 
-Data quality checks help identify potential issues in incoming data. Depending on the checks implemented in the application, these may include missing values, unexpected values, or other inconsistencies.
+---
 
-### Alerts and Incidents
+## 🏗️ System Architecture
 
-Monitoring results can be recorded and presented as alerts or incidents so that potential issues can be reviewed.
+```text
+              Reference Dataset
+                     |
+                     v
+              Current Dataset
+                     |
+                     v
+              Data Processing
+                     |
+                     v
+             Data Quality Checks
+                     |
+                     v
+             Drift Detection
+                PSI + KS
+                     |
+                     v
+           Monitoring Reports
+                     |
+                     v
+             Alerts & Incidents
+                     |
+          +----------+----------+
+          |          |          |
+          v          v          v
+       GenAI      Incident   Performance
+      Assistant  Investigator  Advisor
+          |          |          |
+          +----------+----------+
+                     |
+                     v
+              Streamlit Dashboard
+                     |
+                     v
+                Docker Image
+```
 
-**Note:** Drift detection identifies changes in data distributions; it does not automatically prove that model accuracy has decreased.
+---
 
-## 4. Machine Learning Models
+## 🛠️ Technology Stack
 
-ModelGuard includes the following model artifacts:
+| Category | Technologies |
+|---|---|
+| Programming | Python |
+| Dashboard | Streamlit |
+| Data Processing | Pandas, NumPy |
+| Visualization | Matplotlib, Seaborn |
+| Machine Learning | Scikit-learn |
+| Statistical Analysis | SciPy |
+| ML Models | Random Forest, ANN |
+| Drift Detection | PSI, KS Test |
+| Generative AI | Groq API |
+| Containerization | Docker |
+| Version Control | Git, GitHub |
 
-### Random Forest
-A saved Scikit-learn pipeline that can include preprocessing and a trained Random Forest estimator.
+---
 
-### Artificial Neural Network (ANN)
-A saved neural network model intended for use with the project's TensorFlow/Keras workflow.
+## 📊 Machine Learning Models
 
-### ANN Preprocessor
-A saved preprocessing artifact associated with the ANN workflow.
+ModelGuard includes model performance comparison using Random Forest and Artificial Neural Network models.
 
-These artifacts are intended to support the project's machine-learning monitoring and experimentation workflow.
+| Metric | Random Forest | ANN |
+|---|---:|---:|
+| Accuracy | 77.86% | 78.71% |
+| Precision | 57.21% | 59.44% |
+| Recall | 65.78% | 62.30% |
+| F1 Score | 61.19% | 60.84% |
+| ROC-AUC | 83.46% | 83.97% |
 
-## 5. Technologies Used
+These results illustrate the trade-offs between the two models. ANN has slightly higher accuracy and ROC-AUC, while Random Forest has higher recall.
 
-- **Python** — application programming and data processing.
-- **Streamlit** — interactive dashboard.
-- **Pandas** — data manipulation and analysis.
-- **NumPy** — numerical operations.
-- **Matplotlib** — data visualization.
-- **Seaborn** — statistical visualization.
-- **Scikit-learn** — machine-learning pipelines and statistical utilities.
-- **TensorFlow/Keras** — neural network model support.
-- **Joblib** — loading and saving Python model artifacts.
-- **Git and GitHub** — source control and project hosting.
+---
 
-## 6. Project Structure
+## 📂 Project Structure
 
 ```text
 ModelGuard/
+│
 ├── app.py
 ├── requirements.txt
-├── README.md
+├── Dockerfile
+├── .dockerignore
 ├── .gitignore
-├── .streamlit/
-│   └── config.toml
+│
+├── genai/
+│   ├── __init__.py
+│   ├── llm_engine.py
+│   ├── modelguard_assistant.py
+│   ├── incident_investigator.py
+│   ├── performance_advisor.py
+│   └── modelguard_engine.py
+│
 ├── data/
-│   ├── last_daily_update.json
-│   ├── simulated_current.csv
 │   └── simulated/
-│       └── simulated_current_2026-10-23.csv
+│
 ├── modelguard_alerts.csv
-├── modelguard_ann.keras
-├── modelguard_ann_preprocessor.pkl
 ├── modelguard_data_quality_report.csv
 ├── modelguard_ks_report.csv
-├── modelguard_monitoring_history.csv
 ├── modelguard_psi_report.csv
-└── random_forest_pipeline.pkl
+└── modelguard_monitoring_history.csv
 ```
 
-The exact files and folders may change as the project develops. The structure above reflects the files used in the current project setup.
+---
 
-## 7. Installation
+## ⚙️ Installation and Setup
 
 ### Prerequisites
 
-Install Python and Git. Python 3.10 is the version used in the current development environment.
+- Python 3.10 or later
+- Git
+- pip
+- Groq API key (for GenAI features)
 
 ### Step 1: Clone the Repository
 
@@ -157,109 +224,151 @@ Install Python and Git. Python 3.10 is the version used in the current developme
 git clone https://github.com/vmewara/ModelGuard.git
 ```
 
-### Step 2: Open the Project Folder
+### Step 2: Navigate to the Project
 
 ```bash
 cd ModelGuard
 ```
 
-### Step 3: Create a Virtual Environment
+### Step 3: Install Dependencies
 
-On Windows:
+```bash
+pip install -r requirements.txt
+```
+
+### Step 4: Configure the Groq API Key
+
+Set your API key as an environment variable.
+
+Windows PowerShell:
 
 ```powershell
-py -m venv .venv
+$env:GROQ_API_KEY="your_groq_api_key"
 ```
 
-### Step 4: Activate the Virtual Environment
+Do not upload your API key to GitHub.
 
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
-
-If PowerShell blocks activation, you can use Command Prompt instead:
-
-```cmd
-.venv\Scripts\activate.bat
-```
-
-### Step 5: Install Dependencies
+### Step 5: Run the Application
 
 ```bash
-py -m pip install --upgrade pip
-py -m pip install -r requirements.txt
+streamlit run app.py
 ```
 
-If you are using an activated virtual environment, you can also run:
+Open the application in your browser:
 
-```bash
-python -m pip install -r requirements.txt
-```
-
-## 8. Running the Application
-
-From the project directory, run:
-
-```bash
-python -m streamlit run app.py
-```
-
-Streamlit will display a local URL in the terminal, usually:
-
-```text
 http://localhost:8501
-```
-
-Open the displayed URL in your browser to access the dashboard.
-
-## 9. Monitoring Workflow
-
-The intended monitoring workflow is:
-
-1. Load the available reference and current datasets.
-2. Examine the current data and available data quality results.
-3. Compare reference and current distributions using PSI and KS analysis.
-4. Review available monitoring reports.
-5. Inspect recorded alerts and incidents.
-6. Review monitoring history to understand previously recorded results.
-
-The actual workflow depends on the functionality implemented in `app.py` and the availability of the required data and model files.
-
-## 10. Project Limitations
-
-- The project currently uses simulated data rather than a confirmed live production data feed.
-- Drift detection alone does not establish whether prediction accuracy has changed.
-- Model performance monitoring requires appropriate ground-truth labels and evaluation metrics when available.
-- Automated scheduling and continuous monitoring depend on the runtime environment and additional configuration.
-- The saved model artifacts must be compatible with the installed Python libraries.
-- The current project should be treated as a prototype, not a fully validated production monitoring service.
-
-## 11. Future Improvements
-
-Possible future enhancements include:
-
-- Automated periodic monitoring.
-- Additional data quality checks.
-- Prediction distribution monitoring.
-- Model performance tracking when actual labels become available.
-- More detailed alert severity and incident management.
-- Monitoring history visualizations.
-- Integration with live data sources.
-- Cloud deployment and automated workflows.
-- Unit tests and monitoring pipeline validation.
-
-These are potential improvements and should not be interpreted as features that are already implemented.
-
-## 12. Author
-
-**S Vishal**
-
-Machine Learning | Data Science | Python
-
-## 13. Project Status
-
-ModelGuard is a machine-learning monitoring and portfolio project under development. It demonstrates practical concepts in statistical drift detection, data quality monitoring, saved model artifacts, and interactive dashboard development.
 
 ---
 
-If you find this project useful, feel free to explore the repository and follow its development.
+## 🐳 Docker Deployment
+
+ModelGuard AI is available as a Docker image.
+
+### Pull the Docker Image
+
+```bash
+docker pull genai001343/modelguard-ai:latest
+```
+
+### Run the Container
+
+```bash
+docker run -d \
+  --name modelguard-container \
+  -p 8501:8501 \
+  -e GROQ_API_KEY=your_groq_api_key \
+  genai001343/modelguard-ai:latest
+```
+
+### Access the Application
+
+http://localhost:8501
+
+### Stop the Container
+
+```bash
+docker stop modelguard-container
+```
+
+### Restart the Container
+
+```bash
+docker start modelguard-container
+```
+
+### Docker Hub
+
+https://hub.docker.com/r/genai001343/modelguard-ai
+
+---
+
+## 🧠 GenAI Integration
+
+ModelGuard AI integrates Generative AI through the Groq API.
+
+The GenAI layer connects monitoring information with natural-language explanations.
+
+The application contains three specialized AI capabilities:
+
+1. **ModelGuard Assistant:** General questions and monitoring explanations.
+2. **Incident Investigator:** AI-assisted analysis of detected drift findings.
+3. **Performance Advisor:** Interpretation of model evaluation metrics and recommendations.
+
+The GenAI functionality is designed to assist interpretation. Its explanations should be validated against the underlying monitoring reports and model evaluation results.
+
+---
+
+## 📈 Monitoring Techniques
+
+**Population Stability Index (PSI)**
+
+Used to quantify changes in feature distributions between reference and current datasets.
+
+**Kolmogorov-Smirnov (KS) Test**
+
+Used to compare distributions and assess whether observed differences are statistically significant.
+
+These techniques provide complementary information and help identify features that may require further investigation.
+
+---
+
+## 🔮 Future Enhancements
+
+- Real-time data ingestion.
+- Automated model retraining workflows.
+- Advanced concept drift detection.
+- Integration with cloud monitoring platforms.
+- Model explainability using SHAP.
+- Advanced monitoring notifications.
+- Historical model performance tracking.
+- Enhanced GenAI incident root-cause analysis.
+
+---
+
+## ⚠️ Important Disclaimer
+
+ModelGuard AI is an educational and portfolio demonstration project.
+
+The current monitoring workflow uses simulated data to demonstrate drift detection, monitoring reports, and incident analysis. Simulated drift findings should not be interpreted as confirmed production incidents.
+
+GenAI-generated explanations and recommendations are advisory and require validation.
+
+---
+
+## 👨‍💻 Author
+
+**S. Vishal**
+
+BCA – Data Science  
+SRM Institute of Science and Technology, Chennai
+
+- GitHub: https://github.com/vmewara
+- LinkedIn: https://linkedin.com/in/s-vishal-12ba04375
+
+---
+
+## ⭐ Project
+
+If you find this project interesting, consider giving the repository a star!
+
+**ModelGuard AI – Making Machine Learning Monitoring More Explainable with Generative AI.**
